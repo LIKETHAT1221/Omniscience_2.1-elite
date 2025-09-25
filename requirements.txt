@@ -1,3 +1,25 @@
-streamlit>=1.30.0
-pandas>=2.1.0
-numpy>=1.27.0
+# Web interface
+streamlit==1.30.0
+
+# Core data processing
+pandas==2.1.1
+numpy==1.26.2
+
+# Database
+sqlite3  # built-in with Python, included in standard library
+
+# Optional: for datetime parsing & utilities
+python-dateutil==2.9.4
+
+# For math/technical analysis if needed
+scipy==1.12.2
+
+# Optional: for better HTML rendering
+jinja2==3.1.2
+
+# For debugging or logging
+rich==13.5.4
+
+# Optional: if plotting required
+matplotlib==3.8.1
+seaborn==0.12.3
