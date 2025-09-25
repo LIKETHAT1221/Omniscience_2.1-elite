@@ -1,64 +1,43 @@
+import pandas as pd
+import numpy as np
+
 class Backtester:
     def __init__(self):
-        # You can initialize historical data or config here if needed
-        self.debug = True  # set to True to print debug info
+        pass
 
     def run_backtest(self, parsed_data, bankroll):
         """
-        Run a simple backtest using parsed_data.
-        Uses spread, total, and moneyline probabilities to simulate results.
+        Run a simple backtest using combined EV and Kelly fraction.
+        Returns dict with HTML summary.
         """
+        df = pd.DataFrame(parsed_data)
+        if 'combined_ev' not in df.columns or 'kelly_fraction' not in df.columns:
+            # placeholder calculation if not present
+            df['combined_ev'] = 0.05
+            df['kelly_fraction'] = 0.05
 
-        # Store results
-        results_summary = []
+        results = []
+        bankroll_progress = bankroll
 
-        for row in parsed_data:
-            # Basic mock bet simulation for demonstration
-            spread_ev = row['spread_prob'] - 0.5
-            total_ev = row['total_prob'] - 0.5
-            ml_ev = max(row['ml_no_vig']) - 0.5
-
-            # Combine EVs as a simple metric
-            combined_ev = spread_ev + total_ev + ml_ev
-
-            # Generate recommendation for backtest report
-            if combined_ev > 0.05:
-                recommendation = f"Bet on {row['team']}"
-            elif combined_ev < -0.05:
-                recommendation = f"Avoid {row['team']}"
+        for i, row in df.iterrows():
+            bet_size = bankroll_progress * row.get('kelly_fraction', 0.05)
+            # Simulate win/loss: if EV positive, win; else lose (simplified)
+            if row['combined_ev'] > 0:
+                pnl = bet_size * row['combined_ev']
             else:
-                recommendation = "Hold"
-
-            # Append to summary
-            results_summary.append({
-                'team': row['team'],
-                'spread_prob': row['spread_prob'],
-                'total_prob': row['total_prob'],
-                'ml_away_prob': row['ml_no_vig'][0],
-                'ml_home_prob': row['ml_no_vig'][1],
-                'spread_delta': row['spread_delta'],
-                'spread_momentum': row['spread_momentum'],
-                'total_delta': row['total_delta'],
-                'total_momentum': row['total_momentum'],
-                'recommendation': recommendation
+                pnl = -bet_size * abs(row['combined_ev'])
+            bankroll_progress += pnl
+            results.append({
+                'team': row.get('team'),
+                'bet_size': bet_size,
+                'pnl': pnl,
+                'bankroll': bankroll_progress
             })
 
-            if self.debug:
-                print(f"[DEBUG] {row['team']} - Spread EV: {spread_ev:.3f}, "
-                      f"Total EV: {total_ev:.3f}, ML EV: {ml_ev:.3f}, Combined EV: {combined_ev:.3f}, "
-                      f"Recommendation: {recommendation}")
+        # Generate HTML
+        html = "<h4>Backtest Results</h4><table><tr><th>Team</th><th>Bet Size</th><th>PnL</th><th>Bankroll</th></tr>"
+        for r in results:
+            html += f"<tr><td>{r['team']}</td><td>{r['bet_size']:.2f}</td><td>{r['pnl']:.2f}</td><td>{r['bankroll']:.2f}</td></tr>"
+        html += "</table>"
 
-        # Build HTML report for Streamlit
-        html = "<h4>Backtest Results</h4><ul>"
-        for r in results_summary:
-            html += (
-                f"<li><strong>{r['team']}</strong>: Spread Δ={r['spread_delta']}, "
-                f"Spread Momentum={r['spread_momentum']}, Total Δ={r['total_delta']}, "
-                f"Total Momentum={r['total_momentum']}, "
-                f"Spread Prob={r['spread_prob']:.2f}, Total Prob={r['total_prob']:.2f}, "
-                f"Away ML Prob={r['ml_away_prob']:.2f}, Home ML Prob={r['ml_home_prob']:.2f}, "
-                f"Recommendation={r['recommendation']}</li>"
-            )
-        html += "</ul>"
-
-        return {"html": html}
+        return {'html': html, 'final_bankroll': bankroll_progress}
